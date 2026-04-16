@@ -22,6 +22,9 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json tsconfig.base.js
 COPY apps/web/ ./apps/web/
 COPY packages/shared/ ./packages/shared/
 
+ARG NEXT_PUBLIC_API_URL=https://letreco.gleider.dev/api
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+
 RUN pnpm --filter @letreco/web build
 
 # Stage 3: Production runner
