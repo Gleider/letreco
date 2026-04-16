@@ -37,14 +37,17 @@ RUN adduser --system --uid 1001 nestjs
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
 COPY --from=builder /app/apps/api/prisma ./apps/api/prisma
 COPY --from=builder /app/apps/api/package.json ./apps/api/
+COPY apps/api/entrypoint.sh ./apps/api/entrypoint.sh
 
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/apps/api/node_modules ./apps/api/node_modules
 COPY --from=builder /app/packages/shared ./packages/shared
 COPY --from=builder /app/package.json ./
 
+RUN chmod +x ./apps/api/entrypoint.sh
+
 USER nestjs
 
 EXPOSE 3002
 
-CMD ["sh", "-c", "./apps/api/node_modules/.bin/prisma migrate deploy --schema apps/api/prisma/schema.prisma && node apps/api/dist/main"]
+CMD ["./apps/api/entrypoint.sh"]

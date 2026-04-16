@@ -78,13 +78,16 @@ jobs:
           script: |
             aws ecr get-login-password --region us-east-2 | docker login --username AWS --password-stdin ${{ steps.ecr-login.outputs.registry }}
 
+            # Find the postgres container from gleider-dev
+            PG_CONTAINER=$(docker ps --filter "ancestor=postgres:16-alpine" --format "{{.Names}}" | head -1)
+
             # Create letreco database if it doesn't exist
-            docker exec postgres psql -U postgres -tc "SELECT 1 FROM pg_database WHERE datname = 'letreco'" | grep -q 1 || \
-              docker exec postgres psql -U postgres -c "CREATE DATABASE letreco"
+            docker exec $PG_CONTAINER psql -U postgres -tc "SELECT 1 FROM pg_database WHERE datname = 'letreco'" | grep -q 1 || \
+              docker exec $PG_CONTAINER psql -U postgres -c "CREATE DATABASE letreco"
 
             cd /home/ec2-user/letreco
             echo "ECR_REGISTRY=${{ steps.ecr-login.outputs.registry }}" > .env
-            echo "POSTGRES_PASSWORD=$(docker exec postgres printenv POSTGRES_PASSWORD)" >> .env
+            echo "POSTGRES_PASSWORD=$(docker exec $PG_CONTAINER printenv POSTGRES_PASSWORD)" >> .env
 
             docker compose -f docker-compose.prod.yml pull
             docker compose -f docker-compose.prod.yml up -d

@@ -7,6 +7,7 @@
     "rootDir": "./src",
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
+    "resolveJsonModule": true,
     "noEmit": false
   },
   "include": ["src/**/*"],
