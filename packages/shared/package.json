@@ -1,0 +1,14 @@
+{
+  "name": "@letreco/shared",
+  "version": "0.0.1",
+  "private": true,
+  "main": "./src/types/index.ts",
+  "types": "./src/types/index.ts",
+  "scripts": {
+    "build": "tsc --build",
+    "lint": "echo 'no lint configured'"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0"
+  }
+}

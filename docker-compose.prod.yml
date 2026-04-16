@@ -1,0 +1,18 @@
+services:
+  letreco-api:
+    image: ${ECR_REGISTRY}/letreco-api:latest
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@localhost:5432/letreco?schema=public
+      PORT: '3002'
+      CORS_ORIGIN: https://letreco.gleider.dev
+
+  letreco-web:
+    image: ${ECR_REGISTRY}/letreco-web:latest
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_API_URL: https://letreco.gleider.dev/api

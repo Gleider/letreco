@@ -1,0 +1,42 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Word {
+  id        Int       @id @default(autoincrement())
+  text      String    @unique @db.VarChar(5)
+  usedAt    DateTime?
+  dailyWords DailyWord[]
+
+  @@index([usedAt])
+}
+
+model DailyWord {
+  id         Int      @id @default(autoincrement())
+  date       DateTime @unique @db.Date
+  gameNumber Int      @unique
+  wordId     Int
+  word       Word     @relation(fields: [wordId], references: [id])
+  sessions   GameSession[]
+
+  @@index([date])
+}
+
+model GameSession {
+  id          Int      @id @default(autoincrement())
+  playerId    String   @db.VarChar(36)
+  dailyWordId Int
+  dailyWord   DailyWord @relation(fields: [dailyWordId], references: [id])
+  attempts    Json     @default("[]")
+  status      String   @default("playing") @db.VarChar(10)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([playerId, dailyWordId])
+  @@index([playerId])
+}
