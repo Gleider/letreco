@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { LetterStatus } from '@letreco/shared';
 import { GameBoard } from '@/components/game-board';
 import { Keyboard } from '@/components/keyboard';
+import { REVEAL_TOTAL_MS } from '@/components/game-row';
 import { StatsModal } from '@/components/stats-modal';
 import { submitGuess, getGameStatus } from '@/lib/api-client';
 import { getPlayerId, updateStatsAfterGame, getStats } from '@/lib/storage';
@@ -22,6 +23,8 @@ export default function Home() {
   const [message, setMessage] = useState('');
   const [showStats, setShowStats] = useState(false);
   const [letterStatuses, setLetterStatuses] = useState<Record<string, LetterStatus>>({});
+  const [revealingRow, setRevealingRow] = useState<number | undefined>();
+  const [isRevealing, setIsRevealing] = useState(false);
 
   useEffect(() => {
     const playerId = getPlayerId();
@@ -57,7 +60,7 @@ export default function Home() {
 
   const handleKey = useCallback(
     async (key: string) => {
-      if (gameStatus !== 'playing') return;
+      if (gameStatus !== 'playing' || isRevealing) return;
 
       if (key === 'backspace') {
         setCurrentGuess((g) => g.slice(0, -1));
@@ -74,29 +77,38 @@ export default function Home() {
           const result = await submitGuess(currentGuess, getPlayerId());
           const newAttempt: Attempt = { guess: currentGuess, results: result.results };
           const newAttempts = [...attempts, newAttempt];
+          const rowIndex = attempts.length;
+
           setAttempts(newAttempts);
           setCurrentGuess('');
           setGameNumber(result.gameNumber);
+          setRevealingRow(rowIndex);
+          setIsRevealing(true);
 
-          setLetterStatuses((prev) => {
-            const updated = { ...prev };
-            for (let i = 0; i < 5; i++) {
-              const letter = currentGuess[i];
-              const current = updated[letter];
-              const next = result.results[i];
-              if (!current || priority(next) > priority(current)) {
-                updated[letter] = next;
+          // Update keyboard colors after reveal animation finishes
+          setTimeout(() => {
+            setLetterStatuses((prev) => {
+              const updated = { ...prev };
+              for (let i = 0; i < 5; i++) {
+                const letter = newAttempt.guess[i];
+                const current = updated[letter];
+                const next = result.results[i];
+                if (!current || priority(next) > priority(current)) {
+                  updated[letter] = next;
+                }
               }
-            }
-            return updated;
-          });
+              return updated;
+            });
+            setRevealingRow(undefined);
+            setIsRevealing(false);
 
-          if (result.gameOver) {
-            setGameStatus(result.won ? 'won' : 'lost');
-            setRevealedWord(result.revealedWord);
-            updateStatsAfterGame(result.won, newAttempts.length);
-            setTimeout(() => setShowStats(true), 1500);
-          }
+            if (result.gameOver) {
+              setGameStatus(result.won ? 'won' : 'lost');
+              setRevealedWord(result.revealedWord);
+              updateStatsAfterGame(result.won, newAttempts.length);
+              setTimeout(() => setShowStats(true), 1500);
+            }
+          }, REVEAL_TOTAL_MS);
         } catch (err: any) {
           showMessage(err.message || 'Erro ao enviar tentativa');
         }
@@ -107,7 +119,7 @@ export default function Home() {
         setCurrentGuess((g) => g + key);
       }
     },
-    [currentGuess, attempts, gameStatus, showMessage],
+    [currentGuess, attempts, gameStatus, isRevealing, showMessage],
   );
 
   useEffect(() => {
@@ -165,6 +177,7 @@ export default function Home() {
         attempts={attempts}
         currentGuess={currentGuess}
         currentRow={attempts.length}
+        revealingRow={revealingRow}
       />
 
       <div className="mt-auto pb-6 sm:pb-10 w-full flex justify-center">

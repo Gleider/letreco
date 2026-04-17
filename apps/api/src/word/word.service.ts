@@ -53,7 +53,7 @@ export class WordService implements OnModuleInit {
 
     const randomSkip = Math.floor(Math.random() * availableCount);
 
-    const words = await this.prisma.$queryRaw<Array<{ id: string; text: string }>>`
+    const words = await this.prisma.$queryRaw<Array<{ id: number; text: string }>>`
       SELECT id, text FROM "Word"
       WHERE ("usedAt" IS NULL OR "usedAt" < ${oneYearAgo})
       AND text ~ '^[a-z]{5}$'

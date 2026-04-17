@@ -12,15 +12,21 @@ interface GameBoardProps {
   attempts: Attempt[];
   currentGuess: string;
   currentRow: number;
+  revealingRow?: number;
 }
 
-export function GameBoard({ attempts, currentGuess, currentRow }: GameBoardProps) {
+export function GameBoard({ attempts, currentGuess, currentRow, revealingRow }: GameBoardProps) {
   const rows = [];
 
   for (let i = 0; i < 6; i++) {
     if (i < attempts.length) {
       rows.push(
-        <GameRow key={i} guess={attempts[i].guess} results={attempts[i].results} />,
+        <GameRow
+          key={i}
+          guess={attempts[i].guess}
+          results={attempts[i].results}
+          isRevealing={i === revealingRow}
+        />,
       );
     } else if (i === currentRow) {
       rows.push(
