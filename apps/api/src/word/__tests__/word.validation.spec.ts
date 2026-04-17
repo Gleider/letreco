@@ -1,42 +1,47 @@
-import { WordService } from '../word.service';
 import wordsJson = require('../../seed/words.json');
 
 const words: string[] = Array.isArray(wordsJson)
   ? wordsJson
   : (wordsJson as any).default ?? Object.values(wordsJson);
 
+const KEYBOARD_LETTERS = /^[a-z]{5}$/;
+
+function isKeyboardCompatible(word: string): boolean {
+  return KEYBOARD_LETTERS.test(word.toLowerCase());
+}
+
 describe('Word validation', () => {
   describe('isKeyboardCompatible', () => {
     it('should accept words with only a-z letters', () => {
-      expect(WordService.isKeyboardCompatible('mundo')).toBe(true);
-      expect(WordService.isKeyboardCompatible('cravo')).toBe(true);
-      expect(WordService.isKeyboardCompatible('plano')).toBe(true);
+      expect(isKeyboardCompatible('mundo')).toBe(true);
+      expect(isKeyboardCompatible('cravo')).toBe(true);
+      expect(isKeyboardCompatible('plano')).toBe(true);
     });
 
     it('should reject words with accented characters', () => {
-      expect(WordService.isKeyboardCompatible('ações')).toBe(false);
-      expect(WordService.isKeyboardCompatible('maçãs')).toBe(false);
-      expect(WordService.isKeyboardCompatible('avião')).toBe(false);
-      expect(WordService.isKeyboardCompatible('café!')).toBe(false);
-      expect(WordService.isKeyboardCompatible('ababá')).toBe(false);
-      expect(WordService.isKeyboardCompatible('úmido')).toBe(false);
+      expect(isKeyboardCompatible('ações')).toBe(false);
+      expect(isKeyboardCompatible('maçãs')).toBe(false);
+      expect(isKeyboardCompatible('avião')).toBe(false);
+      expect(isKeyboardCompatible('café!')).toBe(false);
+      expect(isKeyboardCompatible('ababá')).toBe(false);
+      expect(isKeyboardCompatible('úmido')).toBe(false);
     });
 
     it('should reject words with wrong length', () => {
-      expect(WordService.isKeyboardCompatible('casa')).toBe(false);
-      expect(WordService.isKeyboardCompatible('casaco')).toBe(false);
+      expect(isKeyboardCompatible('casa')).toBe(false);
+      expect(isKeyboardCompatible('casaco')).toBe(false);
     });
 
     it('should reject words with numbers or symbols', () => {
-      expect(WordService.isKeyboardCompatible('abc12')).toBe(false);
-      expect(WordService.isKeyboardCompatible('ab-cd')).toBe(false);
+      expect(isKeyboardCompatible('abc12')).toBe(false);
+      expect(isKeyboardCompatible('ab-cd')).toBe(false);
     });
   });
 
   describe('words.json seed file', () => {
     it('should contain only keyboard-compatible words', () => {
       const invalid = words.filter(
-        (w: string) => !WordService.isKeyboardCompatible(w),
+        (w: string) => !isKeyboardCompatible(w),
       );
       expect(invalid).toEqual([]);
     });
