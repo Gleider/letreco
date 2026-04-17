@@ -1,11 +1,17 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
+const KEYBOARD_LETTERS = /^[a-z]{5}$/;
+
 @Injectable()
 export class WordService implements OnModuleInit {
   private readonly logger = new Logger(WordService.name);
 
   constructor(private prisma: PrismaService) {}
+
+  static isKeyboardCompatible(word: string): boolean {
+    return KEYBOARD_LETTERS.test(word.toLowerCase());
+  }
 
   async onModuleInit() {
     await this.ensureDailyWord();
@@ -33,14 +39,12 @@ export class WordService implements OnModuleInit {
     const oneYearAgo = new Date(today);
     oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
 
-    const availableCount = await this.prisma.word.count({
-      where: {
-        OR: [
-          { usedAt: null },
-          { usedAt: { lt: oneYearAgo } },
-        ],
-      },
-    });
+    const countResult = await this.prisma.$queryRaw<[{ count: bigint }]>`
+      SELECT count(*) FROM "Word"
+      WHERE ("usedAt" IS NULL OR "usedAt" < ${oneYearAgo})
+      AND text ~ '^[a-z]{5}$'
+    `;
+    const availableCount = Number(countResult[0].count);
 
     if (availableCount === 0) {
       this.logger.error('No available words for rotation!');
@@ -49,16 +53,15 @@ export class WordService implements OnModuleInit {
 
     const randomSkip = Math.floor(Math.random() * availableCount);
 
-    const word = await this.prisma.word.findFirst({
-      where: {
-        OR: [
-          { usedAt: null },
-          { usedAt: { lt: oneYearAgo } },
-        ],
-      },
-      skip: randomSkip,
-    });
+    const words = await this.prisma.$queryRaw<Array<{ id: string; text: string }>>`
+      SELECT id, text FROM "Word"
+      WHERE ("usedAt" IS NULL OR "usedAt" < ${oneYearAgo})
+      AND text ~ '^[a-z]{5}$'
+      OFFSET ${randomSkip}
+      LIMIT 1
+    `;
 
+    const word = words[0];
     if (!word) {
       this.logger.error('No available words for rotation!');
       throw new Error('No available words');
