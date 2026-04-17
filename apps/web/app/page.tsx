@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { LetterStatus } from '@letreco/shared';
 import { GameBoard } from '@/components/game-board';
 import { Keyboard } from '@/components/keyboard';
@@ -14,6 +14,21 @@ interface Attempt {
   results: LetterStatus[];
 }
 
+function buildLetterStatuses(attempts: Attempt[]): Record<string, LetterStatus> {
+  const statuses: Record<string, LetterStatus> = {};
+  for (const a of attempts) {
+    for (let i = 0; i < 5; i++) {
+      const letter = a.guess[i];
+      const current = statuses[letter];
+      const next = a.results[i];
+      if (!current || priority(next) > priority(current)) {
+        statuses[letter] = next;
+      }
+    }
+  }
+  return statuses;
+}
+
 export default function Home() {
   const [attempts, setAttempts] = useState<Attempt[]>([]);
   const [currentGuess, setCurrentGuess] = useState('');
@@ -25,33 +40,65 @@ export default function Home() {
   const [letterStatuses, setLetterStatuses] = useState<Record<string, LetterStatus>>({});
   const [revealingRow, setRevealingRow] = useState<number | undefined>();
   const [isRevealing, setIsRevealing] = useState(false);
+  const gameNumberRef = useRef(0);
 
-  useEffect(() => {
+  const loadGameState = useCallback(async () => {
     const playerId = getPlayerId();
     if (!playerId) return;
-    getGameStatus(playerId)
-      .then((state) => {
-        if (state.attempts) setAttempts(state.attempts);
-        if (state.status) setGameStatus(state.status);
-        if (state.gameNumber) setGameNumber(state.gameNumber);
-        if ('revealedWord' in state) setRevealedWord((state as any).revealedWord);
-        if (state.attempts) {
-          const statuses: Record<string, LetterStatus> = {};
-          for (const a of state.attempts) {
-            for (let i = 0; i < 5; i++) {
-              const letter = a.guess[i];
-              const current = statuses[letter];
-              const next = a.results[i];
-              if (!current || priority(next) > priority(current)) {
-                statuses[letter] = next;
-              }
-            }
-          }
-          setLetterStatuses(statuses);
-        }
-      })
-      .catch(() => {});
+
+    try {
+      const state = await getGameStatus(playerId);
+      const serverGameNumber = state.gameNumber || 0;
+
+      // New game detected — reset everything
+      if (gameNumberRef.current > 0 && serverGameNumber !== gameNumberRef.current) {
+        setAttempts(state.attempts || []);
+        setCurrentGuess('');
+        setGameStatus(state.status || 'playing');
+        setGameNumber(serverGameNumber);
+        setRevealedWord((state as any).revealedWord);
+        setLetterStatuses(buildLetterStatuses(state.attempts || []));
+        setRevealingRow(undefined);
+        setIsRevealing(false);
+        setShowStats(false);
+        setMessage('');
+        gameNumberRef.current = serverGameNumber;
+        return;
+      }
+
+      // Initial load
+      if (state.attempts) setAttempts(state.attempts);
+      if (state.status) setGameStatus(state.status);
+      setGameNumber(serverGameNumber);
+      gameNumberRef.current = serverGameNumber;
+      if ('revealedWord' in state) setRevealedWord((state as any).revealedWord);
+      if (state.attempts) setLetterStatuses(buildLetterStatuses(state.attempts));
+    } catch {
+      // silently ignore
+    }
   }, []);
+
+  // Load on mount
+  useEffect(() => {
+    loadGameState();
+  }, [loadGameState]);
+
+  // Re-check when tab becomes visible
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        loadGameState();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, [loadGameState]);
+
+  // Periodic check every 60s
+  useEffect(() => {
+    const interval = setInterval(loadGameState, 60_000);
+    return () => clearInterval(interval);
+  }, [loadGameState]);
 
   const showMessage = useCallback((msg: string) => {
     setMessage(msg);
@@ -82,6 +129,7 @@ export default function Home() {
           setAttempts(newAttempts);
           setCurrentGuess('');
           setGameNumber(result.gameNumber);
+          gameNumberRef.current = result.gameNumber;
           setRevealingRow(rowIndex);
           setIsRevealing(true);
 
