@@ -5,7 +5,7 @@ services:
     network_mode: host
     environment:
       NODE_ENV: production
-      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@localhost:5432/letreco?schema=public
+      DATABASE_URL: ${DATABASE_URL}
       PORT: '3002'
       CORS_ORIGIN: https://letreco.gleider.dev
 

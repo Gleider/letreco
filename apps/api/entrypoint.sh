@@ -11,7 +11,7 @@ WORD_COUNT=$(node -e "
   p.word.count().then(c => { console.log(c); p.\$disconnect(); });
 " 2>/dev/null || echo "0")
 
-if [ "$WORD_COUNT" -lt "100" ]; then
+if [ "$WORD_COUNT" -lt "10000" ]; then
   echo "Seeding database with words..."
   node apps/api/dist/seed/run-seed.js
   echo "Seed complete."
