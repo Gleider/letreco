@@ -86,6 +86,20 @@ export class GameService {
     }
 
     const attempts = session.attempts as { guess: string; results: LetterStatus[] }[];
+
+    // If the word was rotated mid-day (upsert changed wordId but kept dailyWord.id),
+    // old sessions may reference a stale word. Detect and discard them.
+    if (attempts.length > 0) {
+      const firstGuess = attempts[0].guess;
+      const results = evaluateGuess(firstGuess, daily.word.text);
+      const storedResults = attempts[0].results;
+      const isStale = results.some((r, i) => r !== storedResults[i]);
+      if (isStale) {
+        await this.prisma.gameSession.delete({ where: { id: session.id } });
+        return { status: 'playing' as const, attempts: [], gameNumber: daily.gameNumber };
+      }
+    }
+
     return {
       status: session.status as 'playing' | 'won' | 'lost',
       attempts,

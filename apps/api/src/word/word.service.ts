@@ -72,6 +72,16 @@ export class WordService implements OnModuleInit {
     });
     const nextGameNumber = (lastGame?.gameNumber ?? 0) + 1;
 
+    // Invalidate existing sessions before changing the word
+    const existingDaily = await this.prisma.dailyWord.findUnique({
+      where: { date: today },
+    });
+    if (existingDaily) {
+      await this.prisma.gameSession.deleteMany({
+        where: { dailyWordId: existingDaily.id },
+      });
+    }
+
     const daily = await this.prisma.dailyWord.upsert({
       where: { date: today },
       update: { wordId: word.id, gameNumber: nextGameNumber },
