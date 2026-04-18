@@ -6,6 +6,7 @@ import { GameBoard } from '@/components/game-board';
 import { Keyboard } from '@/components/keyboard';
 import { REVEAL_TOTAL_MS } from '@/components/game-row';
 import { StatsModal } from '@/components/stats-modal';
+import { RulesModal } from '@/components/rules-modal';
 import { submitGuess, getGameStatus } from '@/lib/api-client';
 import { getPlayerId, updateStatsAfterGame, getStats } from '@/lib/storage';
 
@@ -37,6 +38,7 @@ export default function Home() {
   const [revealedWord, setRevealedWord] = useState<string | undefined>();
   const [message, setMessage] = useState('');
   const [showStats, setShowStats] = useState(false);
+  const [showRules, setShowRules] = useState(false);
   const [letterStatuses, setLetterStatuses] = useState<Record<string, LetterStatus>>({});
   const [revealingRow, setRevealingRow] = useState<number | undefined>();
   const [isRevealing, setIsRevealing] = useState(false);
@@ -184,17 +186,27 @@ export default function Home() {
   return (
     <main className="flex min-h-dvh flex-col items-center">
       <header className="flex w-full items-center justify-between border-b border-gray-800 px-5 py-4">
-        <div className="w-10" />
+        <button
+          onClick={() => setShowRules(true)}
+          className="flex items-center justify-center w-10 h-10 rounded-[10px] bg-[#1f2937] text-gray-300 hover:text-white transition"
+          aria-label="Regras"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+            <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
+            <path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            <circle cx="12" cy="17" r="1" fill="currentColor"/>
+          </svg>
+        </button>
         <h1 className="font-sans text-[28px] sm:text-[32px] font-bold tracking-tight">
           LETRECO
         </h1>
         <button
           onClick={() => setShowStats(true)}
-          className="flex items-center justify-center w-10 h-10 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 transition"
+          className="flex items-center justify-center w-10 h-10 rounded-[10px] bg-[#1f2937] text-gray-300 hover:text-white transition"
           aria-label="Estatísticas"
         >
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-            <path d="M18 20V10M12 20V4M6 20v-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+            <path d="M18 20V10M12 20V4M6 20v-6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
         </button>
       </header>
@@ -235,6 +247,10 @@ export default function Home() {
           disabled={gameStatus !== 'playing'}
         />
       </div>
+
+      {showRules && (
+        <RulesModal onClose={() => setShowRules(false)} />
+      )}
 
       {showStats && (
         <StatsModal
