@@ -1,10 +1,12 @@
 import { Controller, Post, Get, Body, Headers, Query, BadRequestException } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { GameService } from './game.service';
 
 @Controller('game')
 export class GameController {
   constructor(private gameService: GameService) {}
 
+  @Throttle({ default: { ttl: 60000, limit: 6 } })
   @Post('guess')
   async submitGuess(
     @Body('guess') guess: string,
