@@ -2,8 +2,10 @@ import {
   Controller,
   Get,
   Post,
+  Delete,
   Body,
   Query,
+  Param,
   BadRequestException,
   UseGuards,
 } from '@nestjs/common';
@@ -31,5 +33,22 @@ export class AdminDailyWordsController {
       throw new BadRequestException('Campo "wordId" é obrigatório');
     }
     return this.adminDailyWordsService.setToday(Number(wordId));
+  }
+
+  @Post('rotate')
+  forceRotation() {
+    return this.adminDailyWordsService.forceRotation();
+  }
+
+  @Post('schedule')
+  schedule(@Body('date') date: string, @Body('wordId') wordId: number) {
+    if (!date) throw new BadRequestException('Campo "date" é obrigatório');
+    if (!wordId) throw new BadRequestException('Campo "wordId" é obrigatório');
+    return this.adminDailyWordsService.schedule(date, Number(wordId));
+  }
+
+  @Delete('schedule/:date')
+  unschedule(@Param('date') date: string) {
+    return this.adminDailyWordsService.unschedule(date);
   }
 }
