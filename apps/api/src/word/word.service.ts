@@ -17,8 +17,13 @@ export class WordService implements OnModuleInit {
     await this.ensureDailyWord();
   }
 
+  getTodayDate(): Date {
+    const now = new Date();
+    return new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
+  }
+
   async getDailyWord() {
-    const today = this.todayDate();
+    const today = this.getTodayDate();
     const daily = await this.prisma.dailyWord.findUnique({
       where: { date: today },
       include: { word: true },
@@ -34,8 +39,8 @@ export class WordService implements OnModuleInit {
     return !!word;
   }
 
-  async rotateDailyWord() {
-    const today = this.todayDate();
+  async pickRandomAvailableWord(): Promise<{ id: number; text: string }> {
+    const today = this.getTodayDate();
     const oneYearAgo = new Date(today);
     oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
 
@@ -67,48 +72,60 @@ export class WordService implements OnModuleInit {
       throw new Error('No available words');
     }
 
+    return word;
+  }
+
+  async getNextGameNumber(): Promise<number> {
     const lastGame = await this.prisma.dailyWord.findFirst({
       orderBy: { gameNumber: 'desc' },
     });
-    const nextGameNumber = (lastGame?.gameNumber ?? 0) + 1;
+    return (lastGame?.gameNumber ?? 0) + 1;
+  }
 
-    // Invalidate existing sessions before changing the word
-    const existingDaily = await this.prisma.dailyWord.findUnique({
-      where: { date: today },
-    });
-    if (existingDaily) {
-      await this.prisma.gameSession.deleteMany({
-        where: { dailyWordId: existingDaily.id },
-      });
+  async setDailyWord(
+    wordId: number,
+    opts: { date?: Date; invalidateSessions: boolean },
+  ) {
+    const date = opts.date ?? this.getTodayDate();
+    const nextGameNumber = await this.getNextGameNumber();
+
+    if (opts.invalidateSessions) {
+      const existingDaily = await this.prisma.dailyWord.findUnique({ where: { date } });
+      if (existingDaily) {
+        await this.prisma.gameSession.deleteMany({
+          where: { dailyWordId: existingDaily.id },
+        });
+      }
     }
 
     const daily = await this.prisma.dailyWord.upsert({
-      where: { date: today },
-      update: { wordId: word.id, gameNumber: nextGameNumber },
-      create: { date: today, wordId: word.id, gameNumber: nextGameNumber },
+      where: { date },
+      update: { wordId, gameNumber: nextGameNumber },
+      create: { date, wordId, gameNumber: nextGameNumber },
       include: { word: true },
     });
 
     await this.prisma.word.update({
-      where: { id: word.id },
+      where: { id: wordId },
       data: { usedAt: new Date() },
     });
 
+    return daily;
+  }
+
+  async rotateDailyWord() {
+    const word = await this.pickRandomAvailableWord();
+    const daily = await this.setDailyWord(word.id, { invalidateSessions: true });
     this.logger.log(`Daily word rotated: game #${daily.gameNumber}`);
     return daily;
   }
 
   private async ensureDailyWord() {
-    const today = this.todayDate();
+    const today = this.getTodayDate();
     const existing = await this.prisma.dailyWord.findUnique({ where: { date: today } });
     if (!existing) {
       this.logger.log('No daily word for today, creating one...');
       await this.rotateDailyWord();
     }
-  }
-
-  private todayDate(): Date {
-    const now = new Date();
-    return new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
   }
 }
