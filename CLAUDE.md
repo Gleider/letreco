@@ -46,6 +46,12 @@ pnpm dev                        # web (3000) + api (3002)
 - `POST /game/guess` — envia tentativa (header `X-Player-Id`, body `{ "guess": "..." }`)
 - `GET /game/status?playerId=<uuid>` — estado atual do jogo
 
+## Admin
+
+Endpoints sob `/admin/*` exigem JWT HS256 assinado com `API_JWT_SECRET`, mesmo segredo do `gleider-dev`. Consumido pelo painel em `gleider.dev/admin` via `apps/web/lib/api-server.ts`. Ver `docs/letreco.md#admin-api` para contrato completo.
+
+`API_JWT_SECRET` **deve ser idêntico** nos dois repos. Rotação exige atualizar o secret em ambos e redeploy simultâneo. Boot falha explicitamente se a variável não estiver definida.
+
 ## Infraestrutura
 
 - EC2 + RDS compartilhados com gleider-dev (Terraform no repo gleider-dev)
