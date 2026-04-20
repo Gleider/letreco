@@ -19,7 +19,7 @@ model Word {
 model DailyWord {
   id         Int      @id @default(autoincrement())
   date       DateTime @unique @db.Date
-  gameNumber Int      @unique
+  gameNumber Int?     @unique
   wordId     Int
   word       Word     @relation(fields: [wordId], references: [id])
   sessions   GameSession[]

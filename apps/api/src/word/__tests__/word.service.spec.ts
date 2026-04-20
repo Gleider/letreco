@@ -156,4 +156,37 @@ describe('WordService — characterização e refator', () => {
       expect(num).toBe(1);
     });
   });
+
+  describe('activatePendingDailyWord', () => {
+    it('happy path: atribui gameNumber e marca usedAt para row pendente', async () => {
+      const pendingDaily = { id: 20, date: new Date(), wordId: 2, gameNumber: null, word: FAKE_WORD };
+      prisma.dailyWord.findUnique.mockResolvedValue(pendingDaily as never);
+      prisma.dailyWord.findFirst.mockResolvedValue({ gameNumber: 10 });
+      prisma.dailyWord.update.mockResolvedValue({ ...pendingDaily, gameNumber: 11 } as never);
+      prisma.word.update.mockResolvedValue(FAKE_WORD);
+
+      const result = await service.activatePendingDailyWord(new Date());
+      expect(prisma.dailyWord.update).toHaveBeenCalledWith(
+        expect.objectContaining({ data: { gameNumber: 11 } }),
+      );
+      expect(prisma.word.update).toHaveBeenCalledWith(
+        expect.objectContaining({ data: { usedAt: expect.any(Date) } }),
+      );
+      expect((result as { gameNumber: number }).gameNumber).toBe(11);
+    });
+
+    it('edge: retorna null quando não há row pendente para a data', async () => {
+      prisma.dailyWord.findUnique.mockResolvedValue(null);
+      const result = await service.activatePendingDailyWord(new Date());
+      expect(result).toBeNull();
+      expect(prisma.dailyWord.update).not.toHaveBeenCalled();
+    });
+
+    it('edge: no-op idempotente quando gameNumber já está definido', async () => {
+      prisma.dailyWord.findUnique.mockResolvedValue(FAKE_DAILY as never);
+      const result = await service.activatePendingDailyWord(new Date());
+      expect(prisma.dailyWord.update).not.toHaveBeenCalled();
+      expect(result).toEqual(FAKE_DAILY);
+    });
+  });
 });

@@ -24,12 +24,16 @@ export class WordService implements OnModuleInit {
 
   async getDailyWord() {
     const today = this.getTodayDate();
-    const daily = await this.prisma.dailyWord.findUnique({
+    let daily = await this.prisma.dailyWord.findUnique({
       where: { date: today },
       include: { word: true },
     });
     if (!daily) {
       return this.rotateDailyWord();
+    }
+    // Defense in depth: activate pre-scheduled word if gameNumber is null
+    if (daily.gameNumber === null) {
+      daily = (await this.activatePendingDailyWord(today)) ?? daily;
     }
     return daily;
   }
@@ -76,7 +80,9 @@ export class WordService implements OnModuleInit {
   }
 
   async getNextGameNumber(): Promise<number> {
+    // Exclude rows with gameNumber = null (pre-scheduled, not yet activated)
     const lastGame = await this.prisma.dailyWord.findFirst({
+      where: { gameNumber: { not: null } },
       orderBy: { gameNumber: 'desc' },
     });
     return (lastGame?.gameNumber ?? 0) + 1;
@@ -113,6 +119,35 @@ export class WordService implements OnModuleInit {
     return daily;
   }
 
+  async activatePendingDailyWord(date: Date) {
+    const pending = await this.prisma.dailyWord.findUnique({
+      where: { date },
+      include: { word: true },
+    });
+
+    if (!pending || pending.gameNumber !== null) {
+      return pending ?? null;
+    }
+
+    const nextGameNumber = await this.getNextGameNumber();
+
+    const activated = await this.prisma.dailyWord.update({
+      where: { id: pending.id },
+      data: { gameNumber: nextGameNumber },
+      include: { word: true },
+    });
+
+    await this.prisma.word.update({
+      where: { id: pending.wordId },
+      data: { usedAt: new Date() },
+    });
+
+    this.logger.log(
+      `Pre-scheduled word activated for ${date.toISOString().slice(0, 10)}: game #${nextGameNumber}`,
+    );
+    return activated;
+  }
+
   async rotateDailyWord() {
     const word = await this.pickRandomAvailableWord();
     const daily = await this.setDailyWord(word.id, { invalidateSessions: true });
@@ -126,6 +161,8 @@ export class WordService implements OnModuleInit {
     if (!existing) {
       this.logger.log('No daily word for today, creating one...');
       await this.rotateDailyWord();
+    } else if (existing.gameNumber === null) {
+      await this.activatePendingDailyWord(today);
     }
   }
 }

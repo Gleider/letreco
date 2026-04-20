@@ -68,7 +68,7 @@ export class GameService {
       attempt: attemptNumber,
       gameOver,
       won,
-      gameNumber: daily.gameNumber,
+      gameNumber: daily.gameNumber ?? 0,
       ...(gameOver ? { revealedWord: answer } : {}),
     };
   }
@@ -82,7 +82,7 @@ export class GameService {
     });
 
     if (!session) {
-      return { status: 'playing' as const, attempts: [], gameNumber: daily.gameNumber };
+      return { status: 'playing' as const, attempts: [], gameNumber: daily.gameNumber ?? 0 };
     }
 
     const attempts = session.attempts as { guess: string; results: LetterStatus[] }[];
@@ -96,14 +96,14 @@ export class GameService {
       const isStale = results.some((r, i) => r !== storedResults[i]);
       if (isStale) {
         await this.prisma.gameSession.delete({ where: { id: session.id } });
-        return { status: 'playing' as const, attempts: [], gameNumber: daily.gameNumber };
+        return { status: 'playing' as const, attempts: [], gameNumber: daily.gameNumber ?? 0 };
       }
     }
 
     return {
       status: session.status as 'playing' | 'won' | 'lost',
       attempts,
-      gameNumber: daily.gameNumber,
+      gameNumber: daily.gameNumber ?? 0,
       ...(session.status !== 'playing' ? { revealedWord: daily.word.text } : {}),
     };
   }
