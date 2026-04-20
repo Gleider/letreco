@@ -279,6 +279,49 @@ Push na `main` dispara automaticamente:
 - Palavras usadas têm cooldown de 1 ano antes de serem reutilizadas
 - Testes automatizados garantem que o `words.json` não contém palavras inválidas, duplicadas ou com menos de 5000 entradas
 
+## Admin API
+
+Endpoints sob `/admin/*` são consumidos pelo painel `gleider.dev/admin` via `apps/web/lib/api-server.ts`.
+
+### Autenticação
+
+Todos os endpoints exigem JWT HS256 no header `Authorization: Bearer <token>`. O token é assinado com `API_JWT_SECRET` (a **mesma** string compartilhada com `gleider-dev`). Sem token → 401. Token expirado → 401. Role ≠ admin → 403.
+
+```bash
+# Gerar token para teste local (Node REPL)
+node -e "
+const { SignJWT } = require('jose');
+const secret = new TextEncoder().encode('dev-shared-secret');
+new SignJWT({ sub: 'gleider', role: 'admin' })
+  .setProtectedHeader({ alg: 'HS256' })
+  .setIssuedAt()
+  .setExpirationTime('1h')
+  .sign(secret)
+  .then(t => console.log(t));
+"
+```
+
+### Endpoints
+
+| Método | Rota | Descrição |
+|--------|------|-----------|
+| GET | `/admin/words?q=&page=&pageSize=` | Lista/busca palavras (paginado, max 200/página) |
+| POST | `/admin/words` body `{ text }` | Adiciona palavra (`^[a-z]{5}$` + dedupe) |
+| DELETE | `/admin/words/:id` | Remove palavra (409 se referenciada por DailyWord) |
+| GET | `/admin/daily-words?limit=` | Últimas N DailyWords (desc por data, default 30) |
+| GET | `/admin/daily-words/today` | Palavra de hoje + `activeSessions` count |
+| POST | `/admin/daily-words/today` body `{ wordId }` | Troca palavra do dia (invalida sessions) |
+| POST | `/admin/daily-words/rotate` | Força rotação aleatória (igual ao cron) |
+| POST | `/admin/daily-words/schedule` body `{ date, wordId }` | Agenda palavra futura (`YYYY-MM-DD`) |
+| DELETE | `/admin/daily-words/schedule/:date` | Desfaz agendamento pendente |
+
+### Variáveis de Ambiente
+
+- `API_JWT_SECRET` — string aleatória forte, **deve ser igual** ao `API_JWT_SECRET` do `gleider-dev`. Rotação exige redeploy de ambos os serviços.
+- Boot da API falha explicitamente se `API_JWT_SECRET` não estiver definido.
+
+Ver `.env.example` para referência de todas as variáveis.
+
 ## Design
 
 - **Dark theme:** Fundo `#030712` (gray-950), texto claro
