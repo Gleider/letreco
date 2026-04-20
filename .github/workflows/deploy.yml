@@ -75,13 +75,14 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ec2-user
           key: ${{ secrets.EC2_SSH_KEY }}
-          envs: ECR_REGISTRY,DATABASE_URL
+          envs: ECR_REGISTRY,DATABASE_URL,API_JWT_SECRET
           script: |
             aws ecr get-login-password --region us-east-2 | docker login --username AWS --password-stdin $ECR_REGISTRY
 
             cd /home/ec2-user/letreco
             echo "ECR_REGISTRY=$ECR_REGISTRY" > .env
             echo "DATABASE_URL=$DATABASE_URL" >> .env
+            echo "API_JWT_SECRET=$API_JWT_SECRET" >> .env
 
             docker compose -f docker-compose.prod.yml pull
             docker compose -f docker-compose.prod.yml up -d

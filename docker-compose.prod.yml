@@ -2,17 +2,30 @@ services:
   letreco-api:
     image: ${ECR_REGISTRY}/letreco-api:latest
     restart: unless-stopped
-    network_mode: host
+    ports:
+      - '3002:3002'
+    networks:
+      - letreco-net
     environment:
       NODE_ENV: production
       DATABASE_URL: ${DATABASE_URL}
       PORT: '3002'
       CORS_ORIGIN: https://letreco.gleider.dev
+      API_JWT_SECRET: ${API_JWT_SECRET}
 
   letreco-web:
     image: ${ECR_REGISTRY}/letreco-web:latest
     restart: unless-stopped
-    network_mode: host
+    ports:
+      - '3003:3003'
+    networks:
+      - letreco-net
     environment:
       NODE_ENV: production
       NEXT_PUBLIC_API_URL: https://letreco.gleider.dev/api
+    depends_on:
+      - letreco-api
+
+networks:
+  letreco-net:
+    driver: bridge
